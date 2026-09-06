@@ -1,0 +1,69 @@
+BadRequest:
+  description: Request syntax or parameters are invalid
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/bad-request
+        title: Synthetic request is invalid
+        status: 400
+        request_id: req_00000000000000000001
+Unauthorized:
+  description: Authentication is missing or invalid
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/unauthorized
+        title: Synthetic credential was rejected
+        status: 401
+        request_id: req_00000000000000000002
+PaymentRequired:
+  description: The synthetic account cannot purchase this label
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/payment-required
+        title: Synthetic balance is insufficient
+        status: 402
+        request_id: req_00000000000000000003
+NotFound:
+  description: The requested synthetic resource does not exist
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/not-found
+        title: Synthetic resource was not found
+        status: 404
+        request_id: req_00000000000000000004
+Conflict:
+  description: Current resource state prevents the operation
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/conflict
+        title: Synthetic resource state conflicts
+        status: 409
+        request_id: req_00000000000000000005
+ValidationFailed:
+  description: One or more fields failed semantic validation
+  content:
+    application/problem+json:
+      schema:
+        $ref: ./models.yml#/Problem
+      example:
+        type: https://parcel-events.example/problems/validation
+        title: Synthetic request validation failed
+        status: 422
+        request_id: req_00000000000000000006
+        errors:
+          - path: recipient.postal_code
+            message: must be a synthetic postal code

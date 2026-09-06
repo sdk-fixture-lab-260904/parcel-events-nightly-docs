@@ -1,0 +1,560 @@
+Address:
+  type: object
+  additionalProperties: false
+  required: [name, line1, city, postal_code, country]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      example: Rowan Example
+    company:
+      type: [string, "null"]
+      example: Northstar Supplies
+    line1:
+      type: string
+      example: 14 Fictional Quay
+    line2:
+      type: [string, "null"]
+      example: Unit 7
+    city:
+      type: string
+      example: Exampleton
+    region:
+      type: [string, "null"]
+      example: Test Province
+    postal_code:
+      type: string
+      example: EX4 2PL
+    country:
+      type: string
+      pattern: "^[A-Z]{2}$"
+      example: ZZ
+    phone:
+      type: [string, "null"]
+      example: "+00000000000"
+Parcel:
+  type: object
+  additionalProperties: false
+  required: [length_cm, width_cm, height_cm, weight_grams]
+  properties:
+    length_cm:
+      type: number
+      exclusiveMinimum: 0
+      example: 30.5
+    width_cm:
+      type: number
+      exclusiveMinimum: 0
+      example: 20
+    height_cm:
+      type: number
+      exclusiveMinimum: 0
+      example: 12
+    weight_grams:
+      type: integer
+      minimum: 1
+      example: 1750
+    contents:
+      type: array
+      maxItems: 50
+      items:
+        $ref: "#/ParcelItem"
+ParcelItem:
+  type: object
+  additionalProperties: false
+  required: [description, quantity, unit_value]
+  properties:
+    description:
+      type: string
+      example: Synthetic cotton shirt
+    quantity:
+      type: integer
+      minimum: 1
+      example: 2
+    unit_value:
+      $ref: "#/Money"
+    customs_code:
+      type: [string, "null"]
+      example: "610910"
+Money:
+  type: object
+  additionalProperties: false
+  required: [amount, currency]
+  properties:
+    amount:
+      type: string
+      pattern: "^[0-9]+(\\.[0-9]{2})$"
+      example: "12.50"
+    currency:
+      type: string
+      pattern: "^[A-Z]{3}$"
+      example: XTS
+ShipmentStatus:
+  type: string
+  enum:
+    - draft
+    - label_purchased
+    - in_transit
+    - out_for_delivery
+    - delivered
+    - exception
+    - canceled
+CreateShipmentRequest:
+  type: object
+  additionalProperties: false
+  required: [reference, service, sender, recipient, parcels]
+  properties:
+    reference:
+      type: string
+      maxLength: 80
+      example: synthetic-order-1042
+    service:
+      type: string
+      enum: [economy, express, same_day]
+    sender:
+      $ref: "#/Address"
+    recipient:
+      $ref: "#/Address"
+    parcels:
+      type: array
+      minItems: 1
+      maxItems: 20
+      items:
+        $ref: "#/Parcel"
+    delivery_instructions:
+      type: [string, "null"]
+      maxLength: 500
+      example: Leave with the synthetic reception desk
+    metadata:
+      type: object
+      additionalProperties:
+        type: string
+      maxProperties: 20
+Shipment:
+  type: object
+  additionalProperties: false
+  required:
+    - id
+    - object
+    - reference
+    - service
+    - status
+    - tracking_number
+    - sender
+    - recipient
+    - parcels
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      example: shp_00000000000000000001
+    object:
+      const: shipment
+    reference:
+      type: string
+      example: synthetic-order-1042
+    service:
+      type: string
+      enum: [economy, express, same_day]
+    status:
+      $ref: "#/ShipmentStatus"
+    tracking_number:
+      type: string
+      example: PE-000000000001
+    sender:
+      $ref: "#/Address"
+    recipient:
+      $ref: "#/Address"
+    parcels:
+      type: array
+      items:
+        $ref: "#/Parcel"
+    delivery_instructions:
+      type: [string, "null"]
+    metadata:
+      type: object
+      additionalProperties:
+        type: string
+    created_at:
+      type: string
+      format: date-time
+      example: 2026-09-04T08:15:30Z
+    updated_at:
+      type: string
+      format: date-time
+      example: 2026-09-04T08:16:12Z
+UpdateShipmentRequest:
+  type: object
+  additionalProperties: false
+  minProperties: 1
+  properties:
+    delivery_instructions:
+      type: [string, "null"]
+      maxLength: 500
+    metadata:
+      type: object
+      additionalProperties:
+        type: string
+TrackingEvent:
+  type: object
+  additionalProperties: false
+  required: [id, object, shipment_id, status, occurred_at, location]
+  properties:
+    id:
+      type: string
+      example: evt_00000000000000000001
+    object:
+      const: tracking_event
+    shipment_id:
+      type: string
+      example: shp_00000000000000000001
+    status:
+      $ref: "#/ShipmentStatus"
+    message:
+      type: string
+      example: Parcel scanned at synthetic sorting hub
+    occurred_at:
+      type: string
+      format: date-time
+      example: 2026-09-05T05:40:00Z
+    location:
+      type: object
+      additionalProperties: false
+      required: [city, country]
+      properties:
+        city:
+          type: string
+          example: Samplehaven
+        country:
+          type: string
+          example: ZZ
+ShipmentStatusEvent:
+  type: object
+  additionalProperties: false
+  required: [id, type, created_at, data]
+  properties:
+    id:
+      type: string
+      example: wh_evt_0000000000000001
+    type:
+      const: shipment.status_changed
+    created_at:
+      type: string
+      format: date-time
+    data:
+      type: object
+      additionalProperties: false
+      required: [shipment, event]
+      properties:
+        shipment:
+          $ref: "#/Shipment"
+        event:
+          $ref: "#/TrackingEvent"
+TrackingTimeline:
+  type: object
+  additionalProperties: false
+  required: [shipment, events]
+  properties:
+    shipment:
+      $ref: "#/Shipment"
+    events:
+      type: array
+      items:
+        $ref: "#/TrackingEvent"
+LabelFormat:
+  type: string
+  enum: [pdf, png, zpl]
+CreateLabelRequest:
+  type: object
+  additionalProperties: false
+  required: [shipment_id, format]
+  properties:
+    shipment_id:
+      type: string
+      example: shp_00000000000000000001
+    format:
+      $ref: "#/LabelFormat"
+    page_size:
+      type: string
+      enum: [a4, letter, four_by_six]
+      default: four_by_six
+Label:
+  type: object
+  additionalProperties: false
+  required: [id, object, shipment_id, format, download_url, expires_at, price]
+  properties:
+    id:
+      type: string
+      example: lbl_00000000000000000001
+    object:
+      const: label
+    shipment_id:
+      type: string
+      example: shp_00000000000000000001
+    format:
+      $ref: "#/LabelFormat"
+    download_url:
+      type: string
+      format: uri
+      example: https://downloads.parcel-events.example/labels/synthetic-label.pdf
+    expires_at:
+      type: string
+      format: date-time
+    price:
+      $ref: "#/Money"
+CreatePickupRequest:
+  type: object
+  additionalProperties: false
+  required: [shipment_ids, address, window]
+  properties:
+    shipment_ids:
+      type: array
+      minItems: 1
+      maxItems: 100
+      items:
+        type: string
+    address:
+      $ref: "#/Address"
+    window:
+      $ref: "#/PickupWindow"
+    notes:
+      type: [string, "null"]
+      maxLength: 500
+PickupWindow:
+  type: object
+  additionalProperties: false
+  required: [starts_at, ends_at]
+  properties:
+    starts_at:
+      type: string
+      format: date-time
+      example: 2026-09-06T09:00:00Z
+    ends_at:
+      type: string
+      format: date-time
+      example: 2026-09-06T12:00:00Z
+Pickup:
+  type: object
+  additionalProperties: false
+  required: [id, object, status, shipment_ids, address, window, created_at]
+  properties:
+    id:
+      type: string
+      example: pku_00000000000000000001
+    object:
+      const: pickup
+    status:
+      type: string
+      enum: [scheduled, completed, canceled, missed]
+    shipment_ids:
+      type: array
+      items:
+        type: string
+    address:
+      $ref: "#/Address"
+    window:
+      $ref: "#/PickupWindow"
+    created_at:
+      type: string
+      format: date-time
+RateQuoteRequest:
+  type: object
+  additionalProperties: false
+  required: [sender, recipient, parcels]
+  properties:
+    sender:
+      $ref: "#/Address"
+    recipient:
+      $ref: "#/Address"
+    parcels:
+      type: array
+      minItems: 1
+      items:
+        $ref: "#/Parcel"
+RateQuote:
+  type: object
+  additionalProperties: false
+  required: [id, carrier, service, amount, estimated_delivery_date, expires_at]
+  properties:
+    id:
+      type: string
+      example: rate_00000000000000000001
+    carrier:
+      type: string
+      example: Example Parcel Network
+    service:
+      type: string
+      example: synthetic_express
+    amount:
+      $ref: "#/Money"
+    estimated_delivery_date:
+      type: string
+      format: date
+      example: 2026-09-07
+    expires_at:
+      type: string
+      format: date-time
+WebhookEventType:
+  type: string
+  enum:
+    - shipment.created
+    - shipment.status_changed
+    - shipment.delivered
+    - shipment.exception
+    - pickup.completed
+CreateWebhookEndpointRequest:
+  type: object
+  additionalProperties: false
+  required: [url, events]
+  properties:
+    url:
+      type: string
+      format: uri
+      example: https://hooks.parcel-events.example/events
+    events:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: "#/WebhookEventType"
+    description:
+      type: [string, "null"]
+      maxLength: 120
+UpdateWebhookEndpointRequest:
+  type: object
+  additionalProperties: false
+  minProperties: 1
+  properties:
+    url:
+      type: string
+      format: uri
+    events:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        $ref: "#/WebhookEventType"
+    enabled:
+      type: boolean
+WebhookEndpoint:
+  type: object
+  additionalProperties: false
+  required: [id, object, url, events, enabled, created_at]
+  properties:
+    id:
+      type: string
+      example: whe_00000000000000000001
+    object:
+      const: webhook_endpoint
+    url:
+      type: string
+      format: uri
+      example: https://hooks.parcel-events.example/events
+    events:
+      type: array
+      items:
+        $ref: "#/WebhookEventType"
+    enabled:
+      type: boolean
+    signing_secret_hint:
+      type: string
+      example: synthetic-key-ending-0000
+    created_at:
+      type: string
+      format: date-time
+Problem:
+  type: object
+  additionalProperties: false
+  required: [type, title, status, request_id]
+  properties:
+    type:
+      type: string
+      format: uri
+      example: https://parcel-events.example/problems/validation
+    title:
+      type: string
+      example: Synthetic request validation failed
+    status:
+      type: integer
+      minimum: 400
+      maximum: 599
+    detail:
+      type: string
+    request_id:
+      type: string
+      example: req_00000000000000000001
+    errors:
+      type: array
+      items:
+        type: object
+        additionalProperties: false
+        required: [path, message]
+        properties:
+          path:
+            type: string
+            example: recipient.postal_code
+          message:
+            type: string
+            example: must be a synthetic postal code
+PageInfo:
+  type: object
+  additionalProperties: false
+  required: [next_cursor, has_more]
+  properties:
+    next_cursor:
+      type: [string, "null"]
+      example: cur_00000000000000000002
+    has_more:
+      type: boolean
+ShipmentPage:
+  type: object
+  additionalProperties: false
+  required: [data, next_cursor, has_more]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Shipment"
+    next_cursor:
+      type: [string, "null"]
+    has_more:
+      type: boolean
+TrackingEventPage:
+  type: object
+  additionalProperties: false
+  required: [data, next_cursor, has_more]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/TrackingEvent"
+    next_cursor:
+      type: [string, "null"]
+    has_more:
+      type: boolean
+PickupPage:
+  type: object
+  additionalProperties: false
+  required: [data, next_cursor, has_more]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/Pickup"
+    next_cursor:
+      type: [string, "null"]
+    has_more:
+      type: boolean
+WebhookEndpointPage:
+  type: object
+  additionalProperties: false
+  required: [data, next_cursor, has_more]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: "#/WebhookEndpoint"
+    next_cursor:
+      type: [string, "null"]
+    has_more:
+      type: boolean

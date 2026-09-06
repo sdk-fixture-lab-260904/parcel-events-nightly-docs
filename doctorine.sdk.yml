@@ -1,0 +1,156 @@
+schema_version: 1
+targets:
+  ts:
+    package_name: "@sdkfixturelab260904/parcel-events-nightly-sdk"
+    skip: true
+  python:
+    package_name: parcel-events-nightly-sdk-fixture-260904
+    skip: true
+  go:
+    package_name: github.com/sdk-fixture-lab-260904/parcel-events-nightly-go
+    publish:
+      registry: github-tag
+      environment: parcel-events-release
+  cli:
+    package_name: "@sdkfixturelab260904/parcel-events-nightly-cli"
+    skip: true
+resources:
+  shipments:
+    models:
+      Shipment: "#/components/schemas/Shipment"
+      ShipmentStatus: "#/components/schemas/ShipmentStatus"
+    methods:
+      list:
+        endpoint: GET /v1/shipments
+        paginated: cursor_page
+      create:
+        endpoint: POST /v1/shipments
+      retrieve:
+        endpoint: GET /v1/shipments/{shipment_id}
+      update:
+        endpoint: PATCH /v1/shipments/{shipment_id}
+      cancel:
+        endpoint: DELETE /v1/shipments/{shipment_id}
+    subresources:
+      events:
+        models:
+          TrackingEvent: "#/components/schemas/TrackingEvent"
+        methods:
+          list:
+            endpoint: GET /v1/shipments/{shipment_id}/events
+            paginated: cursor_page
+  tracking:
+    $client: true
+    models:
+      TrackingTimeline: "#/components/schemas/TrackingTimeline"
+    methods:
+      retrieve:
+        endpoint: GET /v1/tracking/{tracking_number}
+  labels:
+    models:
+      Label: "#/components/schemas/Label"
+    methods:
+      create:
+        endpoint: POST /v1/labels
+      retrieve:
+        endpoint: GET /v1/labels/{label_id}
+  pickups:
+    models:
+      Pickup: "#/components/schemas/Pickup"
+    methods:
+      list:
+        endpoint: GET /v1/pickups
+        paginated: cursor_page
+      create:
+        endpoint: POST /v1/pickups
+      retrieve:
+        endpoint: GET /v1/pickups/{pickup_id}
+      cancel:
+        endpoint: DELETE /v1/pickups/{pickup_id}
+  rates:
+    methods:
+      quote:
+        endpoint: POST /v1/rates/quote
+  webhook_endpoints:
+    models:
+      WebhookEndpoint: "#/components/schemas/WebhookEndpoint"
+    methods:
+      list:
+        endpoint: GET /v1/webhook-endpoints
+        paginated: cursor_page
+      create:
+        endpoint: POST /v1/webhook-endpoints
+      update:
+        endpoint: PATCH /v1/webhook-endpoints/{endpoint_id}
+      remove:
+        endpoint: DELETE /v1/webhook-endpoints/{endpoint_id}
+pagination:
+  cursor_page:
+    type: cursor
+    request:
+      cursor: query.cursor
+      limit: query.limit
+    response:
+      items: $.data
+      next_cursor: $.next_cursor
+retries:
+  enabled: true
+  max_retries: 3
+  initial_delay_ms: 250
+  max_delay_ms: 8000
+  max_elapsed_ms: 60000
+  exponent: 2
+  status_codes:
+    - 408
+    - 409
+    - 429
+    - 5XX
+  retry_connection_errors: true
+auth:
+  schemes:
+    api_key:
+      type: apiKey
+      in: header
+      name: Parcel-API-Key
+      env: PARCEL_EVENTS_API_KEY
+    bearer_token:
+      type: bearer
+      env: PARCEL_EVENTS_BEARER_TOKEN
+  any_of:
+    - - api_key
+    - - bearer_token
+errors:
+  - class: AuthenticationError
+    status: 401
+  - class: PaymentRequiredError
+    status: 402
+  - class: NotFoundError
+    status: 404
+  - class: ConflictError
+    status: 409
+  - class: ValidationError
+    status: 422
+    shape:
+      pointer: /type
+      equals: https://parcel-events.example/problems/validation
+  - class: RateLimitError
+    status: 429
+  - class: ServerError
+    status: 5XX
+unions:
+  strategy: tagged
+  discriminator_fallback: open-unknown
+idempotency:
+  header: Idempotency-Key
+timeouts:
+  default_ms: 45000
+uploads:
+  multipart: false
+environments:
+  default: production
+  urls:
+    production: https://api.parcel-events.example
+    sandbox: https://sandbox.parcel-events.example
+spec_patches: []
+release_pr:
+  auto_merge: non-breaking

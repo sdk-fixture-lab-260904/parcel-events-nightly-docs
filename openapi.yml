@@ -1,0 +1,510 @@
+openapi: 3.1.0
+info:
+  title: Parcel Events Sandbox API
+  version: 2026-09-04
+  summary: Synthetic parcel orchestration and tracking API
+  description: >-
+    A fictional logistics API used only to exercise generated SDK publication.
+    Every company, identifier, address, tracking event, and URL in this corpus is synthetic.
+  contact:
+    name: Parcel Events Sandbox Team
+    url: https://parcel-events.example/support
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: https://api.parcel-events.example
+    description: Synthetic production
+  - url: https://sandbox.parcel-events.example
+    description: Synthetic test environment
+security:
+  - ApiKey: []
+  - BearerToken: []
+tags:
+  - name: Shipments
+  - name: Tracking
+  - name: Labels
+  - name: Pickups
+  - name: Rates
+  - name: Webhook endpoints
+paths:
+  /v1/shipments:
+    get:
+      operationId: listShipments
+      tags: [Shipments]
+      summary: List shipments
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/ShipmentStatus"
+      responses:
+        "200":
+          description: A page of shipments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipmentPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createShipment
+      tags: [Shipments]
+      summary: Create a shipment
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShipmentRequest"
+      responses:
+        "201":
+          description: Shipment created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/shipments/{shipment_id}:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    get:
+      operationId: retrieveShipment
+      tags: [Shipments]
+      summary: Retrieve a shipment
+      responses:
+        "200":
+          description: Shipment details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateShipment
+      tags: [Shipments]
+      summary: Update delivery instructions
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateShipmentRequest"
+      responses:
+        "200":
+          description: Updated shipment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    delete:
+      operationId: cancelShipment
+      tags: [Shipments]
+      summary: Cancel a shipment before handoff
+      responses:
+        "204":
+          description: Shipment canceled
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/shipments/{shipment_id}/events:
+    parameters:
+      - $ref: "#/components/parameters/ShipmentId"
+    get:
+      operationId: listShipmentEvents
+      tags: [Tracking]
+      summary: List tracking events for a shipment
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of immutable tracking events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingEventPage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/tracking/{tracking_number}:
+    get:
+      operationId: retrieveTrackingTimeline
+      tags: [Tracking]
+      summary: Retrieve a public tracking timeline
+      security: []
+      parameters:
+        - name: tracking_number
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^PE-[A-Z0-9]{12}$"
+      responses:
+        "200":
+          description: Tracking timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingTimeline"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/labels:
+    post:
+      operationId: createLabel
+      tags: [Labels]
+      summary: Buy and render a shipping label
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLabelRequest"
+      responses:
+        "201":
+          description: Label created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+        "402":
+          $ref: "#/components/responses/PaymentRequired"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /v1/labels/{label_id}:
+    get:
+      operationId: retrieveLabel
+      tags: [Labels]
+      summary: Retrieve label metadata and download URL
+      parameters:
+        - $ref: "#/components/parameters/LabelId"
+      responses:
+        "200":
+          description: Label metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Label"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/pickups:
+    get:
+      operationId: listPickups
+      tags: [Pickups]
+      summary: List scheduled pickups
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: scheduled_on
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: A page of pickups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PickupPage"
+    post:
+      operationId: createPickup
+      tags: [Pickups]
+      summary: Schedule a carrier pickup
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePickupRequest"
+      responses:
+        "201":
+          description: Pickup scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pickup"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /v1/pickups/{pickup_id}:
+    parameters:
+      - $ref: "#/components/parameters/PickupId"
+    get:
+      operationId: retrievePickup
+      tags: [Pickups]
+      summary: Retrieve a pickup
+      responses:
+        "200":
+          description: Pickup details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pickup"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: cancelPickup
+      tags: [Pickups]
+      summary: Cancel a pickup
+      responses:
+        "204":
+          description: Pickup canceled
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /v1/rates/quote:
+    post:
+      operationId: quoteRates
+      tags: [Rates]
+      summary: Quote available shipping services
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateQuoteRequest"
+      responses:
+        "200":
+          description: Ranked rate quotes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RateQuote"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /v1/webhook-endpoints:
+    get:
+      operationId: listWebhookEndpoints
+      tags: [Webhook endpoints]
+      summary: List webhook endpoints
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of webhook endpoints
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpointPage"
+    post:
+      operationId: createWebhookEndpoint
+      tags: [Webhook endpoints]
+      summary: Register a webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookEndpointRequest"
+      responses:
+        "201":
+          description: Webhook endpoint registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpoint"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /v1/webhook-endpoints/{endpoint_id}:
+    parameters:
+      - $ref: "#/components/parameters/WebhookEndpointId"
+    patch:
+      operationId: updateWebhookEndpoint
+      tags: [Webhook endpoints]
+      summary: Update a webhook endpoint
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookEndpointRequest"
+      responses:
+        "200":
+          description: Updated endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookEndpoint"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteWebhookEndpoint
+      tags: [Webhook endpoints]
+      summary: Delete a webhook endpoint
+      responses:
+        "204":
+          description: Endpoint deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+webhooks:
+  shipmentStatusChanged:
+    post:
+      operationId: shipmentStatusChanged
+      summary: Shipment status changed
+      parameters:
+        - name: Parcel-Event-Id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: Parcel-Event-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentStatusEvent"
+      responses:
+        "204":
+          description: Event accepted
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: Parcel-API-Key
+    BearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+        minLength: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ShipmentId:
+      name: shipment_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^shp_[a-z0-9]{20}$"
+    LabelId:
+      name: label_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^lbl_[a-z0-9]{20}$"
+    PickupId:
+      name: pickup_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^pku_[a-z0-9]{20}$"
+    WebhookEndpointId:
+      name: endpoint_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^whe_[a-z0-9]{20}$"
+  schemas:
+    Address:
+      $ref: ./models.yml#/Address
+    CreateLabelRequest:
+      $ref: ./models.yml#/CreateLabelRequest
+    CreatePickupRequest:
+      $ref: ./models.yml#/CreatePickupRequest
+    CreateShipmentRequest:
+      $ref: ./models.yml#/CreateShipmentRequest
+    CreateWebhookEndpointRequest:
+      $ref: ./models.yml#/CreateWebhookEndpointRequest
+    Label:
+      $ref: ./models.yml#/Label
+    Money:
+      $ref: ./models.yml#/Money
+    Parcel:
+      $ref: ./models.yml#/Parcel
+    Pickup:
+      $ref: ./models.yml#/Pickup
+    PickupPage:
+      $ref: ./models.yml#/PickupPage
+    Problem:
+      $ref: ./models.yml#/Problem
+    RateQuote:
+      $ref: ./models.yml#/RateQuote
+    RateQuoteRequest:
+      $ref: ./models.yml#/RateQuoteRequest
+    Shipment:
+      $ref: ./models.yml#/Shipment
+    ShipmentPage:
+      $ref: ./models.yml#/ShipmentPage
+    ShipmentStatus:
+      $ref: ./models.yml#/ShipmentStatus
+    ShipmentStatusEvent:
+      $ref: ./models.yml#/ShipmentStatusEvent
+    TrackingEvent:
+      $ref: ./models.yml#/TrackingEvent
+    TrackingEventPage:
+      $ref: ./models.yml#/TrackingEventPage
+    TrackingTimeline:
+      $ref: ./models.yml#/TrackingTimeline
+    UpdateShipmentRequest:
+      $ref: ./models.yml#/UpdateShipmentRequest
+    UpdateWebhookEndpointRequest:
+      $ref: ./models.yml#/UpdateWebhookEndpointRequest
+    WebhookEndpoint:
+      $ref: ./models.yml#/WebhookEndpoint
+    WebhookEndpointPage:
+      $ref: ./models.yml#/WebhookEndpointPage
+  responses:
+    BadRequest:
+      $ref: ./responses.yml#/BadRequest
+    Conflict:
+      $ref: ./responses.yml#/Conflict
+    NotFound:
+      $ref: ./responses.yml#/NotFound
+    PaymentRequired:
+      $ref: ./responses.yml#/PaymentRequired
+    Unauthorized:
+      $ref: ./responses.yml#/Unauthorized
+    ValidationFailed:
+      $ref: ./responses.yml#/ValidationFailed
