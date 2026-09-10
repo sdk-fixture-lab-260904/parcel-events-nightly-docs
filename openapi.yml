@@ -32,7 +32,7 @@ paths:
     get:
       operationId: listShipments
       tags: [Shipments]
-      summary: List shipments (nightly run 20260910-098f53e4)
+      summary: List shipments (nightly run 20260910-cdcc24cf)
       parameters:
         - $ref: "#/components/parameters/Cursor"
         - $ref: "#/components/parameters/Limit"
